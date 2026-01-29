@@ -34,11 +34,8 @@ def find_blank(state):
     raise ValueError("No blank found")
 
 
-def windy_manhattan_only(state):
-    """
-    Admissible heuristic: windy Manhattan distance only.
-    (Do NOT add out_of_place if you want guaranteed optimality.)
-    """
+def windy_manhattan(state):
+    """ Sum_{i=1..8} h_i(n): windy Manhattan only """
     h = 0
     for r in range(3):
         for c in range(3):
@@ -59,6 +56,27 @@ def windy_manhattan_only(state):
             else:
                 h += (gr - r) * 2        # move south
     return h
+
+
+def out_of_place(state):
+    """ h^(n): number of misplaced tiles (excluding blank) """
+    misplaced = 0
+    for r in range(3):
+        for c in range(3):
+            v = state[r][c]
+            if v == BLANK:
+                continue
+            if goal[r][c] != v:
+                misplaced += 1
+    return misplaced
+
+
+def heuristic(state):
+    """
+    h(n) = (sum_{i=1..8} h_i(n)) + h^(n)
+         = windy_manhattan(state) + out_of_place(state)
+    """
+    return windy_manhattan(state) + out_of_place(state)
 
 
 def neighbors_in_required_order(state):
@@ -102,7 +120,7 @@ def print_state_like_assignment(state, g, h, idx):
     print()
 
 
-def reconstruct_path(parent, g_cost, start, goal):
+def reconstruct_path(parent, g_cost, goal):
     path = []
     cur = goal
     while cur is not None:
@@ -118,12 +136,11 @@ def astar_optimal_path_and_print(start, goal):
     frontier = []
     fifo = 0
 
-    parent = {start: None}     # state -> previous state
-    g_best = {start: 0}        # state -> best g so far
+    parent = {start: None}
+    g_best = {start: 0}
     explored = set()
 
-    h0 = windy_manhattan_only(start)
-    heapq.heappush(frontier, (h0, fifo, 0, start))
+    heapq.heappush(frontier, (heuristic(start), fifo, 0, start))
 
     while frontier:
         f, _, g, state = heapq.heappop(frontier)
@@ -136,25 +153,24 @@ def astar_optimal_path_and_print(start, goal):
         explored.add(state)
 
         if state == goal:
-            path, total_cost = reconstruct_path(parent, g_best, start, goal)
+            path, total_cost = reconstruct_path(parent, g_best, goal)
 
-            print("OPTIMAL PATH (start → goal):\n")
+            print("PATH FOUND BY A* (using assignment heuristic):\n")
             for idx, s in enumerate(path):
-                print_state_like_assignment(s, g_best[s], windy_manhattan_only(s), idx)
+                print_state_like_assignment(s, g_best[s], heuristic(s), idx)
 
-            print(f"TOTAL OPTIMAL COST = {total_cost}")
+            print(f"TOTAL COST = {total_cost}")
             return path, total_cost
 
         for child, step_cost in neighbors_in_required_order(state):
             ng = g + step_cost
-            if child in explored and ng >= g_best.get(child, float("inf")):
-                continue
 
+            # Standard best-g check
             if ng < g_best.get(child, float("inf")):
                 g_best[child] = ng
                 parent[child] = state
                 fifo += 1
-                nf = ng + windy_manhattan_only(child)
+                nf = ng + heuristic(child)
                 heapq.heappush(frontier, (nf, fifo, ng, child))
 
     print("No solution found.")
