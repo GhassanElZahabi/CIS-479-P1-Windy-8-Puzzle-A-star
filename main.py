@@ -20,9 +20,8 @@ for r in range(3):
     for c in range(3):
         goal_pos[goal[r][c]] = (r, c)
 
-# Windy movement cost for the tile that moves into the blank
-# wind from east -> blows west:
-# west = 1 (along), north/south = 2 (side), east = 3 (against)
+# Wind costs (tile moves into blank): west=1, north/south=2, east=3
+
 MOVE_COST = {"west": 1, "east": 3, "north": 2, "south": 2}
 
 
@@ -72,10 +71,12 @@ def out_of_place(state):
 
 
 def heuristic(state):
+
     """
-    h(n) = (sum_{i=1..8} h_i(n)) + h^(n)
-         = windy_manhattan(state) + out_of_place(state)
+    Assignment heuristic: windy Manhattan + misplaced tiles (excluding blank)
+
     """
+
     return windy_manhattan(state) + out_of_place(state)
 
 
@@ -132,7 +133,6 @@ def reconstruct_path(parent, g_cost, goal):
 
 
 def astar_optimal_path_and_print(start, goal):
-    # Frontier items: (f, fifo, g, state)
     frontier = []
     fifo = 0
 
@@ -155,7 +155,7 @@ def astar_optimal_path_and_print(start, goal):
         if state == goal:
             path, total_cost = reconstruct_path(parent, g_best, goal)
 
-            print("PATH FOUND BY A* (using assignment heuristic):\n")
+            print("solution path found by A* using the assignment heuristic:\n")
             for idx, s in enumerate(path):
                 print_state_like_assignment(s, g_best[s], heuristic(s), idx)
 
@@ -165,12 +165,13 @@ def astar_optimal_path_and_print(start, goal):
         for child, step_cost in neighbors_in_required_order(state):
             ng = g + step_cost
 
-            # Standard best-g check
+            # best-g check
             if ng < g_best.get(child, float("inf")):
                 g_best[child] = ng
                 parent[child] = state
                 fifo += 1
                 nf = ng + heuristic(child)
+                # Frontier items: (f, fifo, g, state)
                 heapq.heappush(frontier, (nf, fifo, ng, child))
 
     print("No solution found.")
